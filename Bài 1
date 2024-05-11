@@ -1,0 +1,85 @@
+import java.io.*;
+import java.net.*;
+
+public class ChatApp {
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java ChatApp [server|client]");
+            return;
+        }
+
+        if (args[0].equals("server")) {
+            runServer();
+        } else if (args[0].equals("client")) {
+            runClient();
+        } else {
+            System.out.println("Invalid argument. Use 'server' or 'client'.");
+        }
+    }
+
+    public static void runClient() {
+        try {
+            Socket socket = new Socket("localhost", 1234);
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
+
+            Thread readerThread = new Thread(() -> {
+                try {
+                    String input;
+                    while ((input = reader.readLine()) != null) {
+                        System.out.println("Server: " + input);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            readerThread.start();
+
+            String input;
+            while ((input = consoleReader.readLine()) != null) {
+                writer.println(input);
+            }
+
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void runServer() {
+        try {
+            ServerSocket serverSocket = new ServerSocket(1234);
+            Socket socket = serverSocket.accept();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
+
+            Thread readerThread = new Thread(() -> {
+                try {
+                    String input;
+                    while ((input = reader.readLine()) != null) {
+                        System.out.println("Client: " + input);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            readerThread.start();
+
+            String input;
+            while ((input = consoleReader.readLine()) != null) {
+                writer.println(input);
+            }
+
+            socket.close();
+            serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}

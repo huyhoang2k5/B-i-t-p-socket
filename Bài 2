@@ -1,0 +1,83 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.net.*;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import javax.swing.*;
+
+public class ClockServer extends JFrame implements ActionListener {
+
+    private JLabel timeLabel;
+    private Timer timer;
+    private ServerSocket serverSocket;
+    private Socket clientSocket;
+
+    public ClockServer() throws IOException {
+        setTitle("Đồng hồ");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        timeLabel = new JLabel();
+        timeLabel.setFont(new Font("Arial", Font.PLAIN, 48));
+        timeLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        add(timeLabel, BorderLayout.CENTER);
+
+        timer = new Timer(1000, this);
+        timer.start();
+
+        startServer(); // Khởi động server
+    }
+
+    private void startServer() throws IOException {
+        int port = 8000;
+        serverSocket = new ServerSocket(port);
+
+        new Thread(() -> {
+            while (true) {
+                try {
+                    clientSocket = serverSocket.accept();
+                    System.out.println("Kết nối từ client: " + clientSocket.getInetAddress().getHostAddress());
+
+                    DataInputStream input = new DataInputStream(clientSocket.getInputStream());
+                    DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
+
+                    while (true) {
+                        String message = input.readUTF();
+
+                        if (message.equals("time")) {
+                            String currentTime = Instant.now().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE_TIME);
+                            output.writeUTF(currentTime);
+                        }
+                    }
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    System.out.println("Lỗi kết nối đến client!");
+                }
+            }
+        }).start();
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        try {
+            if (clientSocket != null) {
+                DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
+                output.writeUTF("time");
+
+                DataInputStream input = new DataInputStream(clientSocket.getInputStream());
+                String currentTime = input.readUTF();
+
+                timeLabel.setText(currentTime);
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            System.out.println("Lỗi kết nối đến client!");
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        new ClockServer().setVisible(true);
+    }
+}
